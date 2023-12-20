@@ -32,7 +32,7 @@ async def user_del(username: str, me: MeAdmin) -> None:
     await del_user(username)
 
 @router.post("/@{username}/set")
-async def user_set(username: str, admin: bool) -> User:
+async def user_set(username: str, me: MeAdmin, admin: bool) -> User:
     await set_user(username, admin)
     return await get_user_unsafe(username)
 
