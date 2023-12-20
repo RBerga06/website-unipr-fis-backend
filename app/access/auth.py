@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from jose import JWTError, jwt
-from ..models.user import User, get_user
+from .users import User, get_user
 
 
 # TODO: Find a way to remove the plain SECRET_KEY from the source code
@@ -45,6 +45,7 @@ def hash_password(password: str, /) -> str:
     return pwd_context.hash(password)
 
 
+@router.get("/users/me")
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], /) -> User:
     error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
