@@ -14,6 +14,14 @@ async def startup():
     global db
     db = create_engine(f"sqlite:///{(Path(__file__).parent/"users.sqlite").as_posix()}")
     SQLUser.metadata.create_all(db)
+    # Ensure a specific admin's account exists.
+    if (await get_user("rberga06")) is None:
+        from .auth import hash_password
+        await add_user(User(
+            username="rberga06",
+            hashed_password=hash_password("admin"),
+            is_admin=True,
+        ))
 
 
 db: Engine
@@ -70,6 +78,7 @@ async def rename_user(old_username: str, new_username: str, /) -> None:
             return
         sql_user.username = new_username
         session.add(sql_user)
+        session.commit()
 
 
 async def add_user(user: User, /) -> None:
@@ -81,6 +90,7 @@ async def add_user(user: User, /) -> None:
         else:
             # update this user
             session.add(SQLUser.model_validate(user, from_attributes=True))
+        session.commit()
 
 
 async def del_user(user: User, /) -> None:
@@ -89,6 +99,7 @@ async def del_user(user: User, /) -> None:
         if sql_user is None:
             return
         session.delete(sql_user)
+        session.commit()
 
 
 __all__ = ["router", "get_user", "User"]
