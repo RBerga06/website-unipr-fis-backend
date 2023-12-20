@@ -1,0 +1,15 @@
+[project]
+name = ""
+version = ""
+description = ""
+authors = [
+    {name = "RBerga06", email = "78449715+RBerga06@users.noreply.github.com"},
+]
+dependencies = [
+    "fastapi>=0.105.0",
+    "pydantic>=2.5.2",
+    "sqlmodel>=0.0.14",
+]
+requires-python = ">=3.12"
+readme = "README.md"
+license = {text = "AGPL-3.0-only"}
