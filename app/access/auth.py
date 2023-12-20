@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # pyright: reportMissingModuleSource=false
-"""Authentication."""
+"""OAuth Authentication."""
 from datetime import datetime, timedelta
 from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from jose import JWTError, jwt
-from .models.user import User, get_user
+from ..models.user import User, get_user
 
 
 # TODO: Find a way to remove the plain SECRET_KEY from the source code
@@ -20,6 +20,7 @@ TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+router = APIRouter()
 
 
 class Token(BaseModel):
@@ -34,9 +35,6 @@ def create_access_token(data: dict[str, Any], expires_delta: timedelta, /) -> st
     to_encode = data.copy()
     to_encode.update({"exp": datetime.utcnow() + expires_delta})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-
-router = APIRouter()
 
 
 def verify_password(plain: str, hashed: str, /) -> bool:
@@ -94,6 +92,4 @@ async def login_for_access_token(form: Annotated[OAuth2PasswordRequestForm, Depe
     )
 
 
-@router.get("/users/me")
-async def users_me(user: Annotated[User, Depends(get_current_user)]) -> User:
-    return user
+__all__ = ["router", "get_current_user"]
