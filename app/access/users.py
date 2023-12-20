@@ -4,7 +4,7 @@
 """Users"""
 from pathlib import Path
 from typing import Annotated
-from fastapi import APIRouter, HTTPException, status
+from fastapi import HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import Engine, create_engine
 from sqlmodel import Field, SQLModel, Session, select
@@ -25,7 +25,6 @@ async def startup():
 
 
 db: Engine
-router = APIRouter()
 
 
 class User(BaseModel):
@@ -54,7 +53,6 @@ async def get_user(username: str, /) -> User | None:
             return User.model_validate(sql, from_attributes=True)
 
 
-@router.get("/users/@{username}")
 async def get_user_unsafe(username: str) -> User:
     user = await get_user(username)
     if user is None:
@@ -62,7 +60,6 @@ async def get_user_unsafe(username: str) -> User:
     return user
 
 
-@router.get("/users/all")
 async def get_all_users() -> list[User]:
     with Session(db) as session:
         return [
@@ -93,13 +90,20 @@ async def add_user(user: User, /) -> None:
         session.commit()
 
 
-async def del_user(user: User, /) -> None:
+async def set_user(username: str, is_admin: bool, /) -> None:
     with Session(db) as session:
-        sql_user = _get_sql_user(session, user.username)
+        sql_user = _get_sql_user(session, username)
+        sql_user.is_admin = is_admin
+        session.commit()
+
+
+async def del_user(username: str, /) -> None:
+    with Session(db) as session:
+        sql_user = _get_sql_user(session, username)
         if sql_user is None:
             return
         session.delete(sql_user)
         session.commit()
 
 
-__all__ = ["router", "get_user", "User"]
+__all__ = ["User", "get_user", "get_all_users", "add_user", "set_user", "del_user"]

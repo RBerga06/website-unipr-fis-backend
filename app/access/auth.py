@@ -68,6 +68,13 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
 
 Me = Annotated[User, Depends(get_current_user)]
 
+def me_admin(me: Me, /) -> User:
+    if not me.is_admin:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+    return me
+
+MeAdmin = Annotated[User, Depends(me_admin)]
+
 
 async def authenticate_user(username: str, password: str, /) -> User | None:
     user = await get_user(username)
