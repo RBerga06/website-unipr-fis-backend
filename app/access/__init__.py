@@ -3,4 +3,4 @@
 """`BaseModel`s & `APIRouter`s for users/authentication/etc."""
 # pyright: reportUnusedImport=false
 # ruff: noqa: F401
-from . import auth, users
+from . import auth, users, admin
