@@ -3,7 +3,7 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from .users import User, add_user, del_user, get_user_unsafe
-from .auth import get_current_user
+from .auth import get_current_user, Me
 
 router = APIRouter()
 
@@ -14,7 +14,13 @@ def admin(me: Annotated[User, Depends(get_current_user)], /) -> User:
     return me
 
 
-type Admin = Annotated[User, Depends(admin)]
+@router.post("/users/me/del")
+async def me_del(me: Me) -> None:
+    """Delete my account."""
+    await del_user(me)
+
+
+Admin = Annotated[User, Depends(admin)]
 
 
 @router.post("/users/new")
@@ -30,6 +36,6 @@ async def user_edit(me: Admin, username: str, is_admin: bool | None = None):
     await add_user(user)
 
 
-@router.post("/users/del")
-async def user_del(me: Admin, user: User):
-    await del_user(user)
+@router.post("/users/@{username}/del")
+async def user_del(me: Admin, username: str):
+    await del_user(await get_user_unsafe(username))

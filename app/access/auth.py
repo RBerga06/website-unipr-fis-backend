@@ -66,6 +66,9 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
     return user
 
 
+Me = Annotated[User, Depends(get_current_user)]
+
+
 async def authenticate_user(username: str, password: str, /) -> User | None:
     user = await get_user(username)
     if not user:
