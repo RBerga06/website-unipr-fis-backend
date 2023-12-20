@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """The backend website. Powered by FastAPI + Pydantic + SQLModel."""
 from fastapi import FastAPI
-from .access import auth, users
+from . import access
 
 app = FastAPI()
-app.include_router(auth.router)
-app.include_router(users.router)
+app.include_router(access.auth.router)
+app.include_router(access.users.router)
 
 @app.get("/")
 def root():

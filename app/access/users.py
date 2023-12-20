@@ -8,6 +8,7 @@ router = APIRouter()
 
 
 class User(BaseModel):
+    """A user."""
     username: str
     hashed_password: str
     admin: bool = False
