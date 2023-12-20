@@ -6,7 +6,7 @@ authors = [
     {name = "RBerga06", email = "78449715+RBerga06@users.noreply.github.com"},
 ]
 dependencies = [
-    "fastapi>=0.105.0",
+    "fastapi[all]>=0.105.0",
     "pydantic>=2.5.2",
     "sqlmodel>=0.0.14",
 ]
