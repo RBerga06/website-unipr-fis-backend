@@ -3,8 +3,7 @@
 """The backend website. Powered by FastAPI + Pydantic + SQLModel."""
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from . import access
-from .routers import users
+from . import access, routers
 
 
 @asynccontextmanager
@@ -20,7 +19,7 @@ async def lifespan(app: FastAPI, /):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(access.auth.router)
-app.include_router(users.router)
+app.include_router(routers.users.router)
 
 
 @app.get("/")
