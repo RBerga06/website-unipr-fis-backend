@@ -58,7 +58,7 @@ class SQLUser(SQLModel, table=True):
     is_admin: bool = False
 
 
-def _get_sql_user(session: Session, username: str, /) -> SQLUser | None:
+def _get_sql_user(session: Session, username: str, /):
     return session.exec(select(SQLUser).where(SQLUser.username == username)).first()
 
 
@@ -109,7 +109,8 @@ async def add_user(user: User, /) -> None:
 async def set_user(username: str, is_admin: bool, /) -> None:
     with Session(db) as session:
         sql_user = _get_sql_user(session, username)
-        sql_user.is_admin = is_admin
+        if sql_user is not None:
+            sql_user.is_admin = is_admin
         session.commit()
 
 
