@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI, /):
     # ---
     yield
     # Teardown
-    pass
+    await access.users.teardown()
 
 
 app = FastAPI(lifespan=lifespan)

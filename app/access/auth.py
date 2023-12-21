@@ -18,6 +18,12 @@ SECRET_KEY = "7e8ef11c69e68b881b1db5533fb8eab61aac8b77b46939babc051f5598c27ac8"
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_MINUTES = 30
 
+ERR_UNAUTHORIZED = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Could not validate credentials",
+    headers={"WWW-Authenticate": "Bearer"},
+)
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 router = APIRouter()
@@ -47,22 +53,17 @@ def hash_password(password: str, /) -> str:
 
 @router.get("/users/me")
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
-    error = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str | None = payload.get("sub")
         if username is None:
-            raise error
+            raise ERR_UNAUTHORIZED
         token_data = TokenData(username=username)
     except JWTError:
-        raise error
+        raise ERR_UNAUTHORIZED
     user = await get_user(token_data.username)
     if user is None:
-        raise error
+        raise ERR_UNAUTHORIZED
     return user
 
 

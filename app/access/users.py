@@ -11,7 +11,10 @@ from sqlmodel import Field, SQLModel, Session, select
 
 
 async def startup():
-    global db
+    global db, server_passcode
+    # Read global passcode
+    server_passcode = (Path(__file__).parent/"passcode.txt").read_text().strip().splitlines()[0]
+    # Open database
     db = create_engine(f"sqlite:///{(Path(__file__).parent/"users.sqlite").as_posix()}")
     SQLUser.metadata.create_all(db)
     # Ensure a specific admin's account exists.
@@ -24,13 +27,20 @@ async def startup():
         ))
 
 
+async def teardown():
+    # Save global passcode
+    (Path(__file__).parent/"passcode.txt").write_text(f"{server_passcode}\n")
+
+
 db: Engine
+server_passcode: str
 
 
 class User(BaseModel):
     """A user."""
     username: str
     hashed_password: str
+    verified: bool = False
     is_admin: bool = False
 
 
@@ -104,6 +114,14 @@ async def del_user(username: str, /) -> None:
             return
         session.delete(sql_user)
         session.commit()
+
+
+def get_passcode() -> str:
+    return server_passcode
+
+def set_passcode(passcode: str, /) -> None:
+    global server_passcode
+    server_passcode = passcode
 
 
 __all__ = ["User", "get_user", "get_all_users", "add_user", "set_user", "del_user"]
