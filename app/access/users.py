@@ -10,10 +10,16 @@ from sqlalchemy import Engine, create_engine
 from sqlmodel import Field, SQLModel, Session, select
 
 
+PASSCODE_FILE = (Path(__file__).parent/"passcode.txt").resolve()
+
+
 async def startup():
     global db, server_passcode
     # Read global passcode
-    server_passcode = (Path(__file__).parent/"passcode.txt").read_text().strip().splitlines()[0]
+    if PASSCODE_FILE.exists():
+        server_passcode = PASSCODE_FILE.read_text().strip().splitlines()[0]
+    else:
+        server_passcode = "La sgancia"
     # Open database
     db = create_engine(f"sqlite:///{(Path(__file__).parent/"users.sqlite").as_posix()}")
     SQLUser.metadata.create_all(db)
@@ -29,7 +35,7 @@ async def startup():
 
 async def teardown():
     # Save global passcode
-    (Path(__file__).parent/"passcode.txt").write_text(f"{server_passcode}\n")
+    PASSCODE_FILE.write_text(f"{server_passcode}\n")
 
 
 db: Engine
