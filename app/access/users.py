@@ -95,7 +95,9 @@ class User(BaseModel):
             else:
                 if new is True:
                     raise HTTPException(status.HTTP_409_CONFLICT)
-                sql.__dict__.update(self.__dict__)
+                for field in self.model_fields:
+                    if hasattr(sql, field):
+                        setattr(sql, field, getattr(self, field))
             # Commit the user to the database
             session.add(sql)
             session.commit()
@@ -117,6 +119,7 @@ class SQLUser(SQLModel, table=True):
     username: Annotated[str, Field(index=True)]
     hashed_password: str
     is_admin: bool = False
+    verified: bool = False
 
 
 def _get_sql_user(session: Session, username: str, /):
