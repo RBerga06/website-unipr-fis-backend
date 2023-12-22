@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """`APIRouter`s for account management."""
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 from ..access.auth import Me, MeAdmin, ERR_UNAUTHORIZED
-from ..access.users import User, add_user, del_user, get_all_users, get_user_unsafe, set_user, get_passcode, set_passcode
+from ..access.users import User, get_all_users, get_passcode, set_passcode
 
 
 router = APIRouter(prefix="/users")
@@ -28,7 +28,7 @@ async def admin_set_passcode(me: MeAdmin, passcode: str) -> None:
         if user.username == me.username:
             continue
         user.verified = False
-        await add_user(user)
+        user.save()
 
 
 @router.get("/me")
@@ -37,7 +37,7 @@ async def me_get(me: Me) -> User:
 
 @router.post("/me/del")
 async def me_del(me: Me) -> None:
-    await del_user(me.username)
+    me.delete()
 
 @router.post("/me/verify")
 async def me_verify(me: Me, passcode: str) -> None:
@@ -47,16 +47,28 @@ async def me_verify(me: Me, passcode: str) -> None:
 
 @router.get("/@{username}")
 async def user_get(username: str) -> User:
-    return await get_user_unsafe(username)
+    return User.named(username, strict=True)
 
 @router.post("/@{username}/del")
 async def user_del(username: str, me: MeAdmin) -> None:
-    await del_user(username)
+    User.named(username, strict=True).delete()
 
 @router.post("/@{username}/set")
-async def user_set(username: str, me: MeAdmin, admin: bool) -> User:
-    await set_user(username, admin)
-    return await get_user_unsafe(username)
+async def user_set(username: str, user: User, me: MeAdmin) -> User:
+    if user.username != username:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="Username does not match.",
+        )
+    return user.save(new=False)
 
+@router.post("/@{username}/rename")
+async def user_rename(username: str, new_username: str, me: MeAdmin) -> User:
+    return User.named(username, strict=True).rename(new_username)
+
+
+@router.post("/new")
+async def user_new(user: User, /) -> None:
+    user.save(new=True)
 
 __all__ = ["router"]

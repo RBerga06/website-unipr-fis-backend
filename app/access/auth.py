@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from jose import JWTError, jwt
-from .users import User, get_user
+from .users import User
 
 
 # TODO: Find a way to remove the plain SECRET_KEY from the source code
@@ -47,12 +47,13 @@ def verify_password(plain: str, hashed: str, /) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def hash_password(password: str, /) -> str:
+@router.post("/hash-pwd")
+def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
 @router.get("/users/me")
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
+async def get_user_me(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str | None = payload.get("sub")
@@ -61,13 +62,13 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
         token_data = TokenData(username=username)
     except JWTError:
         raise ERR_UNAUTHORIZED
-    user = await get_user(token_data.username)
+    user = User.named(token_data.username)
     if user is None:
         raise ERR_UNAUTHORIZED
     return user
 
 
-Me = Annotated[User, Depends(get_current_user)]
+Me = Annotated[User, Depends(get_user_me)]
 
 def me_admin(me: Me, /) -> User:
     if not me.is_admin:
@@ -78,7 +79,7 @@ MeAdmin = Annotated[User, Depends(me_admin)]
 
 
 async def authenticate_user(username: str, password: str, /) -> User | None:
-    user = await get_user(username)
+    user = User.named(username)
     if not user:
         return
     if not verify_password(password, user.hashed_password):
@@ -104,4 +105,4 @@ async def login_for_access_token(form: Annotated[OAuth2PasswordRequestForm, Depe
     )
 
 
-__all__ = ["router", "get_current_user"]
+__all__ = ["router", "get_user_me"]

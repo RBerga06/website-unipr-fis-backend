@@ -3,7 +3,7 @@
 # pyright: reportUnknownVariableType=false
 """Users"""
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal, Self, overload
 from fastapi import HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import Engine, create_engine
@@ -20,21 +20,23 @@ async def startup():
         server_passcode = PASSCODE_FILE.read_text().strip().splitlines()[0]
     else:
         server_passcode = "La sgancia"
-    # Open database
-    db = create_engine(f"sqlite:///{(Path(__file__).parent/"users.sqlite").as_posix()}")
+    # --- Open the database ---
+    db = create_engine(
+        f"sqlite:///{(Path(__file__).parent/"users.sqlite").as_posix()}",
+        # echo=True, # Uncomment for debug
+    )
     SQLUser.metadata.create_all(db)
-    # Ensure a specific admin's account exists.
-    rberga06 = await get_user("rberga06")
-    if rberga06 is None:
-        from .auth import hash_password
-        await add_user(User(
-            username="rberga06",
-            hashed_password=hash_password("admin"),
-            is_admin=True,
-        ))
-    elif not rberga06.is_admin:
-        rberga06.is_admin = True
-        await add_user(rberga06)
+    # --- Create gods if necessary ---
+    for username in ("rberga06", "tommy_er_bono"):
+        god = User.named(username)
+        if god is None:
+            from .auth import hash_password
+            god = User(username=username, hashed_password=hash_password("admin"))
+        if not god.is_admin:
+            god.is_admin = True
+        if not god.verified:
+            god.verified = True
+        god.save()
 
 
 async def teardown():
@@ -53,31 +55,72 @@ class User(BaseModel):
     verified: bool = False
     is_admin: bool = False
 
+    @overload
+    @classmethod
+    def named(cls, username: str, /, *, strict: Literal[True]) -> Self: ...
+    @overload
+    @classmethod
+    def named(cls, username: str, /, *, strict: Literal[False] = ...) -> Self | None: ...
+    @classmethod
+    def named(cls, username: str, /, *, strict: bool = False) -> Self | None:
+        """Return the user with the given username in the database (or None if it doesn't exist)."""
+        with Session(db) as session:
+            sql = _get_sql_user(session, username)
+            if sql is not None:
+                return cls.model_validate(sql.model_dump(mode="python"))
+            elif strict:
+                raise HTTPException(status.HTTP_404_NOT_FOUND)
+
+    def rename(self, new_username: str, /) -> Self:
+        """Save changes to this instance in the database and then rename this user."""
+        with Session(db) as session:
+            sql = _get_sql_user(session, self.username)
+            self.username = new_username
+            if sql is None:
+                return self
+            sql.username = new_username
+            session.add(sql)
+            session.commit()
+        return self
+
+    def save(self, /, *, new: bool | None = None) -> Self:
+        """Save changes to this instance in the database."""
+        with Session(db) as session:
+            # Use the current object if the user already exists
+            sql = _get_sql_user(session, self.username)
+            if sql is None:
+                if new is False:
+                    raise HTTPException(status.HTTP_404_NOT_FOUND)
+                sql = SQLUser.model_validate(self.model_dump())
+            else:
+                if new is True:
+                    raise HTTPException(status.HTTP_409_CONFLICT)
+                sql.__dict__.update(self.__dict__)
+            # Commit the user to the database
+            session.add(sql)
+            session.commit()
+        return self
+
+    def delete(self, /) -> None:
+        """Delete this user from the database (if it's there)."""
+        with Session(db) as session:
+            sql_user = _get_sql_user(session, self.username)
+            if sql_user is None:
+                return
+            session.delete(sql_user)
+            session.commit()
+
 
 class SQLUser(SQLModel, table=True):
     """A user in the SQL database."""
     id: Annotated[int | None, Field(primary_key=True)] = None
-    username: str
+    username: Annotated[str, Field(index=True)]
     hashed_password: str
     is_admin: bool = False
 
 
 def _get_sql_user(session: Session, username: str, /):
     return session.exec(select(SQLUser).where(SQLUser.username == username)).first()
-
-
-async def get_user(username: str, /) -> User | None:
-    with Session(db) as session:
-        sql = _get_sql_user(session, username)
-        if sql is not None:
-            return User.model_validate(sql, from_attributes=True)
-
-
-async def get_user_unsafe(username: str) -> User:
-    user = await get_user(username)
-    if user is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
-    return user
 
 
 async def get_all_users() -> list[User]:
@@ -88,45 +131,6 @@ async def get_all_users() -> list[User]:
         ]
 
 
-async def rename_user(old_username: str, new_username: str, /) -> None:
-    with Session(db) as session:
-        sql_user = _get_sql_user(session, old_username)
-        if sql_user is None:
-            return
-        sql_user.username = new_username
-        session.add(sql_user)
-        session.commit()
-
-
-async def add_user(user: User, /) -> None:
-    with Session(db) as session:
-        sql_user = _get_sql_user(session, user.username)
-        if sql_user is None:
-            # create a new user
-            session.add(SQLUser.model_validate(user, from_attributes=True))
-        else:
-            # update this user
-            session.add(SQLUser.model_validate(user, from_attributes=True))
-        session.commit()
-
-
-async def set_user(username: str, is_admin: bool, /) -> None:
-    with Session(db) as session:
-        sql_user = _get_sql_user(session, username)
-        if sql_user is not None:
-            sql_user.is_admin = is_admin
-        session.commit()
-
-
-async def del_user(username: str, /) -> None:
-    with Session(db) as session:
-        sql_user = _get_sql_user(session, username)
-        if sql_user is None:
-            return
-        session.delete(sql_user)
-        session.commit()
-
-
 def get_passcode() -> str:
     return server_passcode
 
@@ -135,4 +139,4 @@ def set_passcode(passcode: str, /) -> None:
     server_passcode = passcode
 
 
-__all__ = ["User", "get_user", "get_all_users", "add_user", "set_user", "del_user"]
+__all__ = ["User", "get_all_users"]
