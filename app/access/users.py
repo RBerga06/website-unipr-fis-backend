@@ -24,7 +24,7 @@ async def startup():
     db = create_engine(f"sqlite:///{(Path(__file__).parent/"users.sqlite").as_posix()}")
     SQLUser.metadata.create_all(db)
     # Ensure a specific admin's account exists.
-    rberga06 = await get_user("dio_richi")
+    rberga06 = await get_user("rberga06")
     if rberga06 is None:
         from .auth import hash_password
         await add_user(User(
