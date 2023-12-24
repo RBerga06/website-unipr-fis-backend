@@ -50,7 +50,7 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
-async def get_user_me(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
+async def me(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str | None = payload.get("sub")
@@ -64,14 +64,21 @@ async def get_user_me(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
         raise ERR_UNAUTHORIZED
     return user
 
+MeMaybeNotVerified = Annotated[User, Depends(me)]
 
-Me = Annotated[User, Depends(get_user_me)]
-
-def me_admin(me: Me, /) -> User:
-    if not me.admin:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+def me_verified(me: MeMaybeNotVerified) -> User:
+    if not me:
+        raise ERR_UNAUTHORIZED
     return me
 
+Me = Annotated[MeMaybeNotVerified, Depends(me_verified)]
+
+def me_admin(me: Me) -> User:
+    if not me.admin:
+        raise ERR_UNAUTHORIZED
+    return me
+
+MeAdmin = Annotated[Me, Depends(me_admin)]
 
 async def authenticate_user(username: str, password: str, /) -> User | None:
     user = User.named(username)
@@ -99,4 +106,4 @@ async def login(form: OAuth2PasswordRequestForm, /) -> Token:
     )
 
 
-__all__ = ["hash_password", "get_user_me", "login"]
+__all__ = ["hash_password", "me", "login"]

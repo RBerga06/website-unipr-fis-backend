@@ -62,6 +62,9 @@ class User(BaseModel):
     banned:   bool = False
     verified: bool = False
 
+    def __bool__(self, /) -> bool:
+        return self.verified and not self.banned
+
     @overload
     @classmethod
     def named(cls, username: str, /, *, strict: Literal[True]) -> Self: ...

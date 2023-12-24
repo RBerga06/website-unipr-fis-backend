@@ -4,7 +4,7 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from ..access.auth import Me, ERR_UNAUTHORIZED, Token, hash_password, login, me_admin
+from ..access.auth import MeMaybeNotVerified, Me, MeAdmin, ERR_UNAUTHORIZED, Token, hash_password, login
 from ..access.users import User, get_all_users, get_passcode, set_passcode
 
 
@@ -12,13 +12,12 @@ router = APIRouter(prefix="/users")
 
 
 @router.post("/me/verify")
-async def verify(me: Me, form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> User:
+async def verify(me: MeMaybeNotVerified, form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> User:
     if (form.username != "passcode") and (form.password != get_passcode()):
         raise ERR_UNAUTHORIZED
+    me.verified = True
+    me.save(new=False)
     return me
-
-MeVerified = Annotated[User, Depends(verify)]
-MeAdmin = Annotated[MeVerified, Depends(me_admin)]
 
 
 @router.get("/all")
@@ -89,6 +88,13 @@ async def user_rename(username: str, new: str, me: MeAdmin) -> User:
 
 @router.post("/login/token")
 async def login_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+    return await login(form)
+
+
+@router.post("/me/setpwd")
+async def me_setpwd(me: Me, form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+    me.hashed_password = hash_password(form.password)
+    me.save(new=False)
     return await login(form)
 
 
