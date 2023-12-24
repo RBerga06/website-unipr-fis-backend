@@ -39,7 +39,7 @@ async def admin_set_passcode(me: MeAdmin, form: Annotated[OAuth2PasswordRequestF
         raise ERR_UNAUTHORIZED
     set_passcode(form.password)
     for user in await get_all_users():
-        if user.is_admin:
+        if user.admin:
             continue
         user.verified = False
         user.save()
@@ -61,6 +61,13 @@ async def me_del(me: Me) -> None:
 @router.get("/@{username}")
 async def user_get(username: str) -> User:
     return User.named(username, strict=True)
+
+@router.get("/@{username}/edit")
+async def user_edit(me: MeAdmin, username: str, banned: bool | None = None) -> User:
+    user = User.named(username, strict=True)
+    if banned is not None:
+        user.banned = banned
+    return user.save(new=False)
 
 # @router.post("/@{username}/del")
 # async def user_del(username: str, me: MeAdmin) -> None:

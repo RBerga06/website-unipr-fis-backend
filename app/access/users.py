@@ -36,10 +36,12 @@ async def startup():
         if god is None:
             from .auth import hash_password
             god = User(username=username, hashed_password=hash_password(password))
-        if not god.is_admin:
-            god.is_admin = True
+        if not god.admin:
+            god.admin = True
         if not god.verified:
             god.verified = True
+        if god.banned:
+            god.banned = False
         god.save()
 
 
@@ -55,9 +57,10 @@ server_passcode: str
 class User(BaseModel):
     """A user."""
     username: str
-    hashed_password: str
+    hashed_password: str  # TODO: find a way to exclude this from responses
+    admin:    bool = False
+    banned:   bool = False
     verified: bool = False
-    is_admin: bool = False
 
     @overload
     @classmethod
