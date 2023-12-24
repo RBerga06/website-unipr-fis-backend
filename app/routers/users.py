@@ -91,8 +91,10 @@ async def login_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> 
     return await login(form)
 
 
-@router.post("/me/setpwd")
-async def me_setpwd(me: Me, form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+@router.post("/me/chpwd/token")
+async def me_chpwd_token(me: Me, form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+    if form.username != me.username:
+        raise ERR_UNAUTHORIZED
     me.hashed_password = hash_password(form.password)
     me.save(new=False)
     return await login(form)
