@@ -4,7 +4,7 @@
 """OAuth Authentication."""
 from datetime import datetime, timedelta
 from typing import Annotated, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -26,7 +26,6 @@ ERR_UNAUTHORIZED = HTTPException(
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-router = APIRouter()
 
 
 class Token(BaseModel):
@@ -47,12 +46,10 @@ def verify_password(plain: str, hashed: str, /) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-@router.post("/hash-pwd")
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
-@router.get("/users/me")
 async def get_user_me(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -104,4 +101,4 @@ async def login(form: OAuth2PasswordRequestForm, /) -> Token:
     )
 
 
-__all__ = ["router", "get_user_me"]
+__all__ = ["hash_password", "get_user_me", "login"]

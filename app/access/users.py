@@ -27,11 +27,15 @@ async def startup():
     )
     SQLUser.metadata.create_all(db)
     # --- Create gods if necessary ---
-    for username in ("rberga06", "tommy_er_bono"):
+    for username, password in [
+        [x for x in map(str.strip, line.split(" ")) if x][:2] for line in
+        map(str.strip, (Path(__file__).parent/"gods.txt").read_text().splitlines())
+        if line and not line.startswith("#")
+    ]:
         god = User.named(username)
         if god is None:
             from .auth import hash_password
-            god = User(username=username, hashed_password=hash_password("admin"))
+            god = User(username=username, hashed_password=hash_password(password))
         if not god.is_admin:
             god.is_admin = True
         if not god.verified:
@@ -142,4 +146,4 @@ def set_passcode(passcode: str, /) -> None:
     server_passcode = passcode
 
 
-__all__ = ["User", "get_all_users"]
+__all__ = ["User", "get_all_users", "get_passcode", "set_passcode"]
