@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """`APIRouter`s for account management."""
-from fastapi import APIRouter, HTTPException, status
-from ..access.auth import Me, MeAdmin, ERR_UNAUTHORIZED
+from typing import Annotated
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from ..access.auth import Me, MeAdmin, ERR_UNAUTHORIZED, Token, hash_password, login
 from ..access.users import User, get_all_users, get_passcode, set_passcode
 
 
@@ -34,6 +36,10 @@ async def admin_set_passcode(me: MeAdmin, passcode: str) -> None:
 @router.get("/me")
 async def me_get(me: Me) -> User:
     return me
+
+@router.get("/me/set")
+async def me_set(me: Me, user: User) -> User:
+    return await user_set(me.username, user, me)
 
 @router.post("/me/del")
 async def me_del(me: Me) -> None:
@@ -67,8 +73,15 @@ async def user_rename(username: str, new_username: str, me: MeAdmin) -> User:
     return User.named(username, strict=True).rename(new_username)
 
 
-@router.post("/new")
-async def user_new(user: User, /) -> None:
+@router.post("/login/token")
+async def login_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+    return await login(form)
+
+
+@router.post("/create/token")
+async def create_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+    user = User(username=form.username, hashed_password=hash_password(form.password))
     user.save(new=True)
+    return await login(form)
 
 __all__ = ["router"]

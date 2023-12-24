@@ -87,8 +87,7 @@ async def authenticate_user(username: str, password: str, /) -> User | None:
     return user
 
 
-@router.post("/token")
-async def login_for_access_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+async def login(form: OAuth2PasswordRequestForm, /) -> Token:
     user = await authenticate_user(form.username, form.password)
     if not user:
         raise HTTPException(
