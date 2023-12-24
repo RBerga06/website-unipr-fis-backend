@@ -72,8 +72,6 @@ def me_admin(me: Me, /) -> User:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED)
     return me
 
-MeAdmin = Annotated[User, Depends(me_admin)]
-
 
 async def authenticate_user(username: str, password: str, /) -> User | None:
     user = User.named(username)
