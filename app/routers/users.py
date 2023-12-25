@@ -11,13 +11,16 @@ from ..access.users import User, get_all_users, get_passcode, set_passcode
 router = APIRouter(prefix="/users")
 
 
-@router.post("/me/verify")
-async def verify(me: MeMaybeNotVerified, form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> User:
-    if (form.username != "passcode") and (form.password != get_passcode()):
+@router.post("/verify")
+async def verify(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> User:
+    if form.password != get_passcode():
         raise ERR_UNAUTHORIZED
-    me.verified = True
-    me.save(new=False)
-    return me
+    user = User.named(form.username)
+    if user is None:
+        raise ERR_UNAUTHORIZED
+    user.verified = True
+    user.save(new=False)
+    return user
 
 
 @router.get("/all")
