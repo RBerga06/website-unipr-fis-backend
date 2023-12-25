@@ -3,7 +3,7 @@
 # pyright: reportMissingModuleSource=false
 """OAuth Authentication."""
 from datetime import datetime, timedelta
-from typing import Annotated, Any
+from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
@@ -36,10 +36,12 @@ class TokenData(BaseModel):
     username: str
 
 
-def create_access_token(data: dict[str, Any], expires_delta: timedelta, /) -> str:
-    to_encode = data.copy()
-    to_encode.update({"exp": datetime.utcnow() + expires_delta})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+def create_access_token(user: User, /, *, expires_delta: timedelta = timedelta(minutes=TOKEN_EXPIRE_MINUTES)) -> Token:
+    data = {"sub": user.username, "exp": datetime.utcnow() + expires_delta}
+    return Token(
+        access_token=jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM),
+        token_type="bearer",
+    )
 
 
 def verify_password(plain: str, hashed: str, /) -> bool:
@@ -80,30 +82,23 @@ def me_admin(me: Me) -> User:
 
 MeAdmin = Annotated[Me, Depends(me_admin)]
 
-async def authenticate_user(username: str, password: str, /) -> User | None:
+def authenticate_user(username: str, password: str, /) -> User | None:
     user = User.named(username)
-    if not user:
+    if user is None:
         return
     if not verify_password(password, user.hashed_password):
         return
     return user
 
-
-async def login(form: OAuth2PasswordRequestForm, /) -> Token:
-    user = await authenticate_user(form.username, form.password)
-    if not user:
+def login(form: OAuth2PasswordRequestForm, /) -> Token:
+    user = authenticate_user(form.username, form.password)
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return Token(
-        access_token=create_access_token(
-            {"sub": user.username},
-            timedelta(minutes=TOKEN_EXPIRE_MINUTES),
-        ),
-        token_type="bearer",
-    )
+    return create_access_token(user)
 
 
 __all__ = ["hash_password", "me", "login"]

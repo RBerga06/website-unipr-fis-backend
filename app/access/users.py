@@ -128,7 +128,8 @@ class SQLUser(SQLModel, table=True):
     id: Annotated[int | None, Field(primary_key=True)] = None
     username: Annotated[str, Field(index=True)]
     hashed_password: str
-    is_admin: bool = False
+    admin:    bool = False
+    banned:   bool = False
     verified: bool = False
 
 

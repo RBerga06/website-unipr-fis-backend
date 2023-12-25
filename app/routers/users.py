@@ -88,7 +88,15 @@ async def user_rename(username: str, new: str, me: MeAdmin) -> User:
 
 @router.post("/login/token")
 async def login_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
-    return await login(form)
+    return login(form)
+
+
+@router.post("/create/token")
+async def create_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+    user = User(username=form.username, hashed_password=hash_password(form.password))
+    user.save(new=True)
+    print("before:", User.named(form.username))
+    return login(form)
 
 
 @router.post("/me/chpwd/token")
@@ -97,14 +105,7 @@ async def me_chpwd_token(me: Me, form: Annotated[OAuth2PasswordRequestForm, Depe
         raise ERR_UNAUTHORIZED
     me.hashed_password = hash_password(form.password)
     me.save(new=False)
-    return await login(form)
-
-
-@router.post("/create/token")
-async def create_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
-    user = User(username=form.username, hashed_password=hash_password(form.password))
-    user.save(new=True)
-    return await login(form)
+    return login(form)
 
 
 __all__ = ["router"]
