@@ -4,7 +4,7 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from ..access.auth import MeMaybeNotVerified, Me, MeAdmin, ERR_UNAUTHORIZED, Token, hash_password, login
+from ..access.auth import MeMaybeNotVerified, MeAdmin, ERR_UNAUTHORIZED, Token, hash_password, login
 from ..access.users import User, get_all_users, get_passcode, set_passcode
 
 
@@ -45,7 +45,7 @@ async def admin_set_passcode(me: MeAdmin, form: Annotated[OAuth2PasswordRequestF
 
 
 @router.get("/me")
-async def me_get(me: Me) -> User:
+async def me_get(me: MeMaybeNotVerified) -> User:
     return me
 
 # @router.get("/me/set")
@@ -53,7 +53,7 @@ async def me_get(me: Me) -> User:
 #     return await user_set(me.username, user, me)
 
 @router.post("/me/del")
-async def me_del(me: Me) -> None:
+async def me_del(me: MeMaybeNotVerified) -> None:
     me.delete()
 
 
@@ -100,7 +100,7 @@ async def create_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) ->
 
 
 @router.post("/me/chpwd/token")
-async def me_chpwd_token(me: Me, form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+async def me_chpwd_token(me: MeMaybeNotVerified, form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
     if form.username != me.username:
         raise ERR_UNAUTHORIZED
     me.hashed_password = hash_password(form.password)
