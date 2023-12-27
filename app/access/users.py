@@ -48,6 +48,10 @@ async def startup():
 async def teardown():
     # Save global passcode
     PASSCODE_FILE.write_text(f"{server_passcode}\n")
+    # Everyone should be offline
+    for user in await get_all_users():
+        user.online = False
+        user.save()
 
 
 db: Engine
@@ -61,6 +65,7 @@ class User(BaseModel):
     admin:    bool = False
     banned:   bool = False
     verified: bool = False
+    online:   bool = False
 
     def __bool__(self, /) -> bool:
         return self.verified and not self.banned
@@ -131,6 +136,7 @@ class SQLUser(SQLModel, table=True):
     admin:    bool = False
     banned:   bool = False
     verified: bool = False
+    online:   bool = False
 
 
 def _get_sql_user(session: Session, username: str, /):

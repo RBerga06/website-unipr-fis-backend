@@ -51,9 +51,9 @@ async def admin_set_passcode(me: MeAdmin, form: Annotated[OAuth2PasswordRequestF
 async def me_get(me: MeMaybeNotVerified) -> User:
     return me
 
-# @router.get("/me/set")
-# async def me_set(me: Me, user: User) -> User:
-#     return await user_set(me.username, user, me)
+@router.get("/me/edit")
+async def me_set(me: MeMaybeNotVerified, online: bool | None = None) -> User:
+    return await user_edit(me, me.username, online=online)
 
 @router.post("/me/del")
 async def me_del(me: MeMaybeNotVerified) -> None:
@@ -65,15 +65,17 @@ async def user_get(username: str) -> User:
     return User.named(username, strict=True)
 
 @router.get("/@{username}/edit")
-async def user_edit(me: MeAdmin, username: str, banned: bool | None = None) -> User:
+async def user_edit(me: MeAdmin, username: str, banned: bool | None = None, online: bool | None = None) -> User:
     user = User.named(username, strict=True)
     if banned is not None:
         user.banned = banned
+    if online is not None:
+        user.online = online
     return user.save(new=False)
 
-# @router.post("/@{username}/del")
-# async def user_del(username: str, me: MeAdmin) -> None:
-#     User.named(username, strict=True).delete()
+@router.post("/@{username}/del")
+async def user_del(me: MeAdmin, username: str) -> None:
+    User.named(username, strict=True).delete()
 
 # @router.post("/@{username}/set")
 # async def user_set(username: str, user: User, me: MeAdmin) -> User:
