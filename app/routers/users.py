@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """`APIRouter`s for account management."""
+from datetime import datetime
 from typing import Annotated
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from ..access.auth import MeMaybeNotVerified, MeAdmin, ERR_UNAUTHORIZED, Token, hash_password, login
 from ..access.users import User, get_all_users, get_passcode, set_passcode
@@ -52,12 +53,17 @@ async def me_get(me: MeMaybeNotVerified) -> User:
     return me
 
 @router.get("/me/edit")
-async def me_set(me: MeMaybeNotVerified, online: bool | None = None) -> User:
-    return await user_edit(me, me.username, online=online)
+async def me_set(me: MeMaybeNotVerified, last_seen: datetime | None = None) -> User:
+    return await user_edit(me, me.username, last_seen=last_seen)
 
 @router.post("/me/del")
 async def me_del(me: MeMaybeNotVerified) -> None:
     me.delete()
+
+
+@router.get("/")
+async def users_get(username: Annotated[list[str], Query()]) -> dict[str, User | None]:
+    return {name: User.named(name, strict=False) for name in username}
 
 
 @router.get("/@{username}")
@@ -65,12 +71,12 @@ async def user_get(username: str) -> User:
     return User.named(username, strict=True)
 
 @router.get("/@{username}/edit")
-async def user_edit(me: MeAdmin, username: str, banned: bool | None = None, online: bool | None = None) -> User:
+async def user_edit(me: MeAdmin, username: str, banned: bool | None = None, last_seen: datetime | None = None) -> User:
     user = User.named(username, strict=True)
     if banned is not None:
         user.banned = banned
-    if online is not None:
-        user.online = online
+    if last_seen is not None:
+        user.last_seen = last_seen
     return user.save(new=False)
 
 @router.post("/@{username}/del")

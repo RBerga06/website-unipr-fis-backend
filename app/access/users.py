@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # pyright: reportUnknownVariableType=false
 """Users"""
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Literal, Self, overload
 from fastapi import HTTPException, status
@@ -48,10 +49,6 @@ async def startup():
 async def teardown():
     # Save global passcode
     PASSCODE_FILE.write_text(f"{server_passcode}\n")
-    # Everyone should be offline
-    for user in await get_all_users():
-        user.online = False
-        user.save()
 
 
 db: Engine
@@ -65,7 +62,7 @@ class User(BaseModel):
     admin:    bool = False
     banned:   bool = False
     verified: bool = False
-    online:   bool = False
+    last_seen: datetime | None = None
 
     def __bool__(self, /) -> bool:
         return self.verified and not self.banned
@@ -133,10 +130,10 @@ class SQLUser(SQLModel, table=True):
     id: Annotated[int | None, Field(primary_key=True)] = None
     username: Annotated[str, Field(index=True)]
     hashed_password: str
-    admin:    bool = False
-    banned:   bool = False
-    verified: bool = False
-    online:   bool = False
+    admin:     bool = False
+    banned:    bool = False
+    verified:  bool = False
+    last_seen: datetime | None = None
 
 
 def _get_sql_user(session: Session, username: str, /):
