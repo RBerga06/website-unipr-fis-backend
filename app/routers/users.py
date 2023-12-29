@@ -3,7 +3,7 @@
 """`APIRouter`s for account management."""
 from datetime import datetime
 from typing import Annotated
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from ..access.auth import MeMaybeNotVerified, MeAdmin, ERR_UNAUTHORIZED, Token, hash_password, login
 from ..access.users import User, get_all_users, get_passcode, set_passcode
@@ -62,8 +62,8 @@ async def me_del(me: MeMaybeNotVerified) -> None:
 
 
 @router.get("/")
-async def users_get(username: Annotated[list[str], Query()]) -> dict[str, User | None]:
-    return {name: User.named(name, strict=False) for name in username}
+async def users_get() -> dict[str, User]:
+    return {u.username: u for u in await get_all_users()}
 
 
 @router.get("/@{username}")
