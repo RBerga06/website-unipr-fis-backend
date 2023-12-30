@@ -71,8 +71,13 @@ async def user_get(username: str) -> User:
     return User.named(username, strict=True)
 
 @router.get("/@{username}/edit")
-async def user_edit(me: MeAdmin, username: str, banned: bool | None = None, last_seen: datetime | None = None) -> User:
+async def user_edit(
+    me: MeAdmin, username: str, banned: bool | None = None,
+    last_seen: datetime | None = None, verified: bool | None = None
+) -> User:
     user = User.named(username, strict=True)
+    if verified is not None:
+        user.verified = verified
     if banned is not None:
         user.banned = banned
     if last_seen is not None:
