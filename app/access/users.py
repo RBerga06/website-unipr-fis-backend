@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # pyright: reportUnknownVariableType=false
 """Users"""
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Literal, Self, overload
 from fastapi import HTTPException, status
@@ -79,7 +79,7 @@ class User(BaseModel):
         with Session(db) as session:
             sql = _get_sql_user(session, username)
             if sql is not None:
-                return cls.model_validate(sql.model_dump(mode="python"))
+                return cls.model_validate(sql.model_dump(mode="python")).ensure_utc()
             elif strict:
                 raise HTTPException(status.HTTP_404_NOT_FOUND)
 
@@ -124,6 +124,14 @@ class User(BaseModel):
             session.delete(sql_user)
             session.commit()
 
+    def ensure_utc(self, /) -> Self:
+        if self.last_seen is not None:
+            if self.last_seen.tzinfo is None:
+                self.last_seen = self.last_seen.replace(tzinfo=timezone.utc)
+            else:
+                self.last_seen = self.last_seen.astimezone(timezone.utc)
+        return self
+
 
 class SQLUser(SQLModel, table=True):
     """A user in the SQL database."""
@@ -143,7 +151,7 @@ def _get_sql_user(session: Session, username: str, /):
 async def get_all_users() -> list[User]:
     with Session(db) as session:
         return [
-            User.model_validate(sql, from_attributes=True)
+            User.model_validate(sql, from_attributes=True).ensure_utc()
             for sql in session.exec(select(SQLUser))
         ]
 
